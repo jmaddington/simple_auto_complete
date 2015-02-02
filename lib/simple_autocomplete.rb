@@ -10,6 +10,12 @@ class ActionController::Base
     define_method("autocomplete_for_#{object}_#{method}") do
       methods = options[:match] || [*method]
       query = options[:query] || 'LOWER(%{field}) LIKE %{query}'
+
+      if options[:query_proc]
+        proc = options[:query_proc]
+        query = proc.call(params[:q])
+      end
+
       mask = options[:mask] || '%%%{value}%'
       condition = methods.map{|m| query % {:field => m, :query => '?'}} * ' OR '
       values = methods.map{|m| mask % {:value => params[:q].to_s.downcase}}
@@ -20,7 +26,7 @@ class ActionController::Base
         :conditions => conditions,
         :order => "#{methods.first} ASC",
         :limit => 10
-        }.merge!(options.except(:match, :query, :mask))
+        }.merge!(options.except(:match, :query, :mask, :query_proc))
 
       @items = model.scoped(find_options)
 
